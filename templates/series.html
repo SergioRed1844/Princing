@@ -1,0 +1,223 @@
+{% extends 'layout.html' %} {# Hereda la estructura base #}
+
+{# Título dinámico basado en el título del análisis #}
+{% block title %}Análisis de Series: {{ analysis_title | default('Serie Temporal') }} - Pricing Suite{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Hereda estilos de layout.html #}
+<style>
+    /* Reutiliza estilos de resultados anteriores para consistencia */
+    .plotly-graph-div { width: 100%; min-height: 450px; }
+    .nav-tabs .nav-link { font-weight: 600; color: var(--bbva-secondary); }
+    .nav-tabs .nav-link.active { color: var(--bbva-primary); border-color: var(--bbva-primary) var(--bbva-primary) #fff; }
+    .tab-content { border: 1px solid var(--bbva-border); border-top: none; padding: 1.5rem; background-color: #fff; border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+    .insight-section { background-color: var(--bbva-light); padding: 1.5rem; border-radius: 8px; border: 1px dashed var(--bbva-border); }
+    .insight-section h5 { color: var(--bbva-primary); margin-bottom: 1rem; border-bottom: 2px solid var(--bbva-accent); padding-bottom: 0.5rem; display: inline-block; }
+    .insight-section ul { padding-left: 1.5rem; }
+    .insight-section li { margin-bottom: 0.75rem; line-height: 1.6; }
+    .table-results th { background-color: var(--bbva-light); position: sticky; top: 0; z-index: 1; }
+    .table-responsive { max-height: 60vh; overflow: auto; border: 1px solid var(--bbva-border); border-radius: 0.375rem; }
+    .metrics-list dt { font-weight: 600; color: var(--bbva-primary); }
+    .metrics-list dd { margin-bottom: 0.5rem; font-size: 1.1rem; }
+    .chart-loading { display: flex; justify-content: center; align-items: center; min-height: 300px; color: var(--bbva-gray); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    {# Título y Acciones #}
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-4">
+         {# Espera 'analysis_title' (string) #}
+        <h1 class="mb-0">Análisis de Series Temporales: <span class="text-primary">{{ analysis_title | e }}</span></h1>
+        <div>
+            {# Asume una ruta de exportación genérica o específica para series #}
+            <a href="{{ url_for('main.export_options', analysis_type='series', source_ref=analysis_title) }}" class="btn btn-outline-success">
+                <i class="fas fa-file-export me-2"></i>Exportar Resultados
+            </a>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    {# Estructura de Pestañas (si aplica, o mostrar todo secuencialmente) #}
+    <ul class="nav nav-tabs mb-0" id="resultsTabSeries" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="chart-series-tab" data-bs-toggle="tab" data-bs-target="#tab-chart-series" type="button" role="tab" aria-controls="tab-chart-series" aria-selected="true">
+                <i class="fas fa-chart-line me-2"></i>Gráfico Principal
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="metrics-series-tab" data-bs-toggle="tab" data-bs-target="#tab-metrics-series" type="button" role="tab" aria-controls="tab-metrics-series" aria-selected="false">
+                <i class="fas fa-calculator me-2"></i>Métricas Clave y Datos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="insights-series-tab" data-bs-toggle="tab" data-bs-target="#tab-insights-series" type="button" role="tab" aria-controls="tab-insights-series" aria-selected="false">
+                <i class="fas fa-lightbulb me-2"></i>Insights y Conclusiones
+            </button>
+        </li>
+    </ul>
+
+    {# Contenido de las Pestañas #}
+    <div class="tab-content" id="resultsTabSeriesContent">
+
+        <div class="tab-pane fade show active" id="tab-chart-series" role="tabpanel" aria-labelledby="chart-series-tab" tabindex="0">
+             <h4 class="mb-3 mt-3">Visualización de la Serie Temporal</h4>
+             <p class="text-muted mb-4">Gráfico mostrando la evolución de las variables clave a lo largo del tiempo (ej. Precio, Ventas, Elasticidad estimada, etc.).</p>
+            {# Contenedor para el gráfico Plotly #}
+            {# Espera 'timeseries_chart_json' (dict/JSON) desde la vista #}
+            {% if timeseries_chart_json %}
+                <div id="timeSeriesChart" class="plotly-graph-div">
+                     <div class="chart-loading">
+                         <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>
+                         <span class="ms-2">Cargando gráfico de series...</span>
+                     </div>
+                </div>
+            {% else %}
+                 <div class="alert alert-warning" role="alert">No se encontraron datos para el gráfico de series temporales.</div>
+            {% endif %}
+        </div>
+
+        <div class="tab-pane fade" id="tab-metrics-series" role="tabpanel" aria-labelledby="metrics-series-tab" tabindex="0">
+            <h4 class="mb-4 mt-3">Resultados Numéricos y Datos</h4>
+
+             {# Sección de Métricas Clave #}
+             {# Espera 'summary_metrics' (dict) o None #}
+            {% if summary_metrics %}
+                <div class="card bbva-card mb-4">
+                     <div class="card-header bbva-card-header">
+                         <i class="fas fa-tachometer-alt me-2"></i>Métricas Clave Derivadas
+                     </div>
+                     <div class="card-body">
+                         <dl class="row metrics-list">
+                             {% for key, value in summary_metrics.items() %}
+                                 <dt class="col-sm-4">{{ key | replace('_',' ') | capitalize | e }}</dt>
+                                 <dd class="col-sm-8">
+                                     {# Formatear si es número, si no mostrar como texto #}
+                                     {% if value is number %}
+                                         {{ value | round(3) }} {# Ajustar precisión según la métrica #}
+                                     {% else %}
+                                         {{ value | e }}
+                                     {% endif %}
+                                 </dd>
+                             {% endfor %}
+                         </dl>
+                     </div>
+                </div>
+            {% endif %}
+
+            {# Tabla de Datos (Opcional) #}
+            {# Espera 'data_table_html' (string HTML) o None #}
+             {% if data_table_html %}
+                <div class="card bbva-card">
+                    <div class="card-header bbva-card-header">
+                        <i class="fas fa-table me-2"></i>Tabla de Datos Relevantes
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            {# IMPORTANTE: Usa '| safe'. Clases CSS deben aplicarse en df.to_html() en backend #}
+                            {{ data_table_html | safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+             {# Mensaje si no hay métricas ni tabla #}
+             {% if not summary_metrics and not data_table_html %}
+                  <div class="alert alert-light" role="alert">
+                    No hay métricas clave o tablas de datos disponibles para este análisis.
+                </div>
+             {% endif %}
+        </div>
+
+        <div class="tab-pane fade" id="tab-insights-series" role="tabpanel" aria-labelledby="insights-series-tab" tabindex="0">
+            <h4 class="mb-4 mt-3">Interpretación y Conclusiones</h4>
+             {# Espera 'insights' (dict) desde la vista #}
+            {% if insights %}
+                <div class="insight-section">
+                    <h5><i class="fas fa-key me-2"></i>Interpretación Estratégica:</h5>
+                    <ul>
+                        {% for key, hint in insights.items() %}
+                            <li><strong>{{ key.replace('_',' ').capitalize() }}:</strong> {{ hint | safe }}</li> {# Usa |safe si hint contiene HTML simple #}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <div class="alert alert-light" role="alert">
+                    No se generaron insights automáticos para este análisis de series.
+                </div>
+            {% endif %}
+        </div>
+
+    </div> {# Fin Tab Content #}
+
+</div>{% endblock %}
+
+
+{% block page_scripts %}
+{{ super() }} {# Hereda scripts de layout.html #}
+{# Cargar librería Plotly.js #}
+<script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    console.log("Página de resultados de Series cargada para: {{ analysis_title | default('N/A') | escapejs }}");
+
+    // Renderizar Gráfico de Series Temporales
+    const timeSeriesChartDiv = document.getElementById('timeSeriesChart');
+    try {
+        // Espera 'timeseries_chart_json' (dict) pasado desde Flask
+        const chartData = {{ timeseries_chart_json | tojson | safe if timeseries_chart_json else '{}' }};
+
+        if (timeSeriesChartDiv && chartData && chartData.data && chartData.layout) {
+             Plotly.newPlot(timeSeriesChartDiv, chartData.data, chartData.layout, {responsive: true});
+             console.log("Gráfico de Series Temporales renderizado.");
+        } else if (timeSeriesChartDiv) {
+             timeSeriesChartDiv.innerHTML = '<div class="alert alert-warning">No hay datos válidos para mostrar el gráfico de series temporales.</div>';
+             console.warn("Datos para gráfico de series (timeseries_chart_json) no encontrados o inválidos.");
+        }
+    } catch (e) {
+        console.error("Error al parsear o renderizar el gráfico de series (timeseries_chart_json):", e);
+        if (timeSeriesChartDiv) {
+             timeSeriesChartDiv.innerHTML = '<div class="alert alert-danger">Error al cargar el gráfico de series temporales.</div>';
+        }
+    }
+
+    // --- Lógica Tabs: Persistencia y Redibujo Plotly (adaptada) ---
+    const resultsTabSeries = document.querySelector('#resultsTabSeries');
+    if (resultsTabSeries) {
+        const tabLinksSeries = resultsTabSeries.querySelectorAll('button[data-bs-toggle="tab"]');
+        const activeTabKeySeries = 'activeSeriesTab'; // Clave única
+
+        tabLinksSeries.forEach(link => {
+            link.addEventListener('shown.bs.tab', event => {
+                localStorage.setItem(activeTabKeySeries, event.target.id);
+                const targetPaneId = event.target.getAttribute('data-bs-target');
+                // Si la pestaña activada contiene el gráfico, redibujar
+                if (targetPaneId === '#tab-chart-series') {
+                    const plotlyGraph = document.querySelector('#timeSeriesChart > .plotly');
+                    if (plotlyGraph) {
+                        Plotly.Plots.resize(plotlyGraph);
+                        console.log("Redibujando gráfico de Series por cambio de pestaña.");
+                    }
+                }
+            });
+        });
+
+        const lastActiveTabIdSeries = localStorage.getItem(activeTabKeySeries);
+        if (lastActiveTabIdSeries) {
+            const lastActiveTab = document.querySelector(`#${lastActiveTabIdSeries}`);
+            if (lastActiveTab) {
+                const tab = new bootstrap.Tab(lastActiveTab);
+                tab.show();
+            } else {
+                localStorage.removeItem(activeTabKeySeries);
+            }
+        }
+    } // Fin lógica Tabs
+
+});
+</script>
+{% endblock %}

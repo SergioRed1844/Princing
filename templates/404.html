@@ -1,0 +1,56 @@
+{% extends "layout.html" %} {# Hereda la estructura y estilos base #}
+
+{% block title %}Página No Encontrada (404) - BBVA Pricing Dashboard{% endblock %}
+
+{% block styles %}
+    {{ super() }} {# Hereda estilos de layout.html #}
+    {# Reutilizar estilos de error.html para consistencia #}
+    <style>
+        .error-container {
+            min-height: 70vh; /* Altura mínima para centrar */
+        }
+        .error-icon {
+            font-size: 5rem; /* Icono grande */
+            margin-bottom: 1.5rem;
+            color: var(--bs-warning); /* Color de advertencia de Bootstrap */
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container d-flex align-items-center justify-content-center error-container py-5">
+
+    <div class="col-lg-8 col-md-10"> {# Limitar ancho #}
+        <div class="card shadow-sm border-light text-center p-4 p-md-5 rounded-3">
+            <div class="card-body">
+
+                {# --- Icono y Título Específico para 404 --- #}
+                <i class="fas fa-map-signs error-icon" aria-hidden="true"></i>
+                <h1 class="h2 fw-bold text-primary mb-3">Página No Encontrada (Error 404)</h1>
+                <p class="text-muted lead mb-4">
+                    Lo sentimos, la dirección a la que intentas acceder no existe en esta aplicación
+                    o ha sido movida permanentemente.
+                </p>
+
+                {# --- Sugerencias y Acciones --- #}
+                <div class="mt-4 pt-3 border-top">
+                    <p class="text-muted small mb-3">Verifica la URL o intenta navegar desde el menú principal:</p>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg me-2">
+                        <i class="fas fa-home me-2"></i> Ir al Panel Principal
+                    </a>
+                    <a href="{{ url_for('upload') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="fas fa-upload me-2"></i> Subir un Archivo
+                    </a>
+                </div>
+
+            </div> {# Fin card-body #}
+        </div> {# Fin card #}
+    </div> {# Fin col #}
+
+</div> {# Fin container #}
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }} {# Hereda scripts de layout.html #}
+    {# No se necesitan scripts específicos para la página 404 generalmente #}
+{% endblock %}

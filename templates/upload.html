@@ -1,0 +1,317 @@
+{# /app/templates/upload.html #}
+{% extends 'layout.html' %}
+
+{% block title %}Cargar Datos – Pricing Suite{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Importa estilos del layout base si los hubiera #}
+<style>
+/* Estilos específicos para la página de subida */
+.upload-card {
+  max-width: 700px; /* Ancho máximo del contenedor del formulario */
+  margin: 2rem auto; /* Centrado horizontal con margen superior/inferior */
+}
+
+/* Clase semántica para el icono de subida (anteriormente icon-upload) */
+.upload-icon {
+  font-size: 3rem; /* Tamaño del icono */
+  /* color: var(--bs-primary); /* Color primario de Bootstrap (u otra variable CSS) */
+  color: #0d6efd; /* Azul primario de Bootstrap como fallback */
+  opacity: 0.7;
+  margin-bottom: 1rem;
+}
+
+/* Estilo para el contenedor de mensajes de error generados por JavaScript */
+#js-error-message {
+  display: none; /* Oculto por defecto, se muestra vía JS */
+}
+
+/* Añadir un poco más de espacio si el mensaje de error está visible */
+#js-error-message + .upload-card {
+  margin-top: 1rem;
+}
+
+/* Mejorar visibilidad del feedback inválido en selects y inputs file */
+.form-select.is-invalid,
+.form-control.is-invalid {
+  border-color: var(--bs-danger); /* Color de borde rojo de Bootstrap para errores */
+}
+.form-select.is-invalid:focus,
+.form-control.is-invalid:focus {
+  border-color: var(--bs-danger);
+  box-shadow: 0 0 0 0.25rem rgba(var(--bs-danger-rgb), 0.25); /* Sombra de foco roja */
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+  <h1 class="mt-4 mb-4 text-center">Cargar Nuevo Archivo para Análisis</h1>
+
+  {# Contenedor para mensajes de error generados por JavaScript (accesible) #}
+  <div class="alert alert-danger alert-dismissible fade show w-75 mx-auto" role="alert" id="js-error-message" aria-live="assertive">
+      <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i> {# Icono de advertencia #}
+      <span id="js-error-text"></span> {# Texto del error se inserta aquí #}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar alerta"></button>
+  </div>
+
+  {# Tarjeta principal para el formulario de subida #}
+  <div class="card shadow-sm upload-card">
+    <div class="card-body p-4 p-md-5">
+      <div class="text-center mb-4">
+        <i class="fas fa-cloud-upload-alt upload-icon" aria-hidden="true"></i> {# Icono renombrado #}
+        <p class="text-muted">Selecciona el tipo de análisis y el archivo (.xlsx, .xls o .csv).</p>
+      </div>
+
+      {# Formulario gestionado preferentemente con Flask-WTF #}
+      {# Se asume que se pasa un objeto 'form' desde la vista Flask #}
+      <form method="POST"
+            action="{{ url_for('main.upload_file') }}" {# Ajusta 'main.upload_file' si es necesario #}
+            enctype="multipart/form-data"
+            id="uploadForm"
+            novalidate {# Deshabilita validación nativa para usar Bootstrap/JS #}
+            aria-labelledby="uploadFormHeading"> {# Para accesibilidad #}
+
+        {# CSRF Token (manejado por Flask-WTF si 'form' existe) #}
+        {{ form.hidden_tag() if form else '' }}
+        {# Si NO usaras WTForms pero sí CSRF global:
+           {% if csrf_token %}
+           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+           {% endif %}
+        #}
+        <h2 id="uploadFormHeading" class="visually-hidden">Formulario de subida de archivos</h2>
+
+        {# Campo: Tipo de Análisis (Select) #}
+        <div class="mb-4">
+          {# Renderiza la etiqueta usando WTForms si 'form' existe, sino fallback HTML #}
+          {{ form.analysis_type.label(class="form-label fw-bold") if form else '<label for="analysis_type" class="form-label fw-bold">Tipo de Análisis <span class="text-danger">*</span></label>'|safe }}
+
+          {# Renderiza el select usando WTForms si 'form' existe, sino fallback HTML #}
+          {# Añade 'is-invalid' si hay errores de WTForms #}
+          {{ form.analysis_type(
+               class="form-select form-select-lg" + (" is-invalid" if form and form.analysis_type.errors else ""),
+               required=True,
+               id="analysis_type", {# WTForms usa el nombre del campo como id por defecto #}
+               **{"aria-describedby": "analysis_type_help analysis_type_feedback"} {# Para accesibilidad #}
+             ) if form else
+             '<select class="form-select form-select-lg" id="analysis_type" name="analysis_type" required aria-describedby="analysis_type_help analysis_type_feedback">'
+             '<option value="" disabled selected>-- Selecciona un tipo --</option>'
+             '<option value="maxdiff">Análisis MaxDiff</option>'
+             '<option value="comstrat">Análisis ComStrat</option>'
+             '<option value="moca">Generar MOCA</option>'
+             '<option value="series">Análisis de Series</option>'
+             '</select>'|safe
+          }}
+
+          {# Muestra errores de WTForms si existen #}
+          {% if form and form.analysis_type.errors %}
+              <div id="analysis_type_feedback" class="invalid-feedback">
+                  {% for error in form.analysis_type.errors %}{{ error }}{% endfor %}
+              </div>
+          {# Mensaje de validación HTML5/Bootstrap por defecto #}
+          {% else %}
+              <div id="analysis_type_feedback" class="invalid-feedback">
+                Por favor, selecciona el tipo de análisis a realizar.
+              </div>
+          {% endif %}
+          <div id="analysis_type_help" class="form-text">Indica qué tipo de estudio contienen los datos del archivo.</div>
+        </div>
+
+        {# Campo: Archivo (File Input) #}
+        <div class="mb-4">
+          {# Renderiza la etiqueta usando WTForms si 'form' existe, sino fallback HTML #}
+          {{ form.file.label(class="form-label fw-bold") if form else '<label for="fileInput" class="form-label fw-bold">Archivo <span class="text-danger">*</span></label>'|safe }}
+
+          {# Renderiza el input file usando WTForms si 'form' existe, sino fallback HTML #}
+          {# Añade 'is-invalid' si hay errores de WTForms #}
+          {{ form.file(
+               class="form-control form-control-lg" + (" is-invalid" if form and form.file.errors else ""),
+               required=True,
+               accept=".xlsx,.xls,.csv", {# Filtro de tipos de archivo en el navegador #}
+               id="fileInput", {# Asegura que el ID coincide con el usado en JS #}
+               **{"aria-describedby": "file_help file_feedback"} {# Para accesibilidad #}
+             ) if form else
+             '<input type="file" class="form-control form-control-lg" id="fileInput" name="file" accept=".xlsx,.xls,.csv" required aria-describedby="file_help file_feedback">'|safe
+          }}
+
+          {# Muestra errores de WTForms si existen #}
+          {% if form and form.file.errors %}
+              <div id="file_feedback" class="invalid-feedback">
+                  {% for error in form.file.errors %}{{ error }}{% endfor %}
+              </div>
+          {# Mensaje de validación HTML5/Bootstrap por defecto #}
+          {% else %}
+              <div id="file_feedback" class="invalid-feedback">
+                Selecciona un archivo válido (.xlsx, .xls, .csv).
+              </div>
+          {% endif %}
+
+          {# Texto de ayuda e información adicional #}
+          <div id="file_help" class="form-text mt-2">
+            Archivos permitidos: Hojas de cálculo Excel (.xlsx, .xls) o valores separados por comas (.csv).
+            {# Muestra tamaño máximo si está definido en el contexto #}
+            {% if max_size_mb %}
+              <br>Tamaño máximo permitido: <strong>{{ max_size_mb }} MB</strong>.
+            {% endif %}
+          </div>
+        </div>
+
+        {# Botón de Envío #}
+        <div class="d-grid gap-2 mt-5">
+          <button type="submit" class="btn btn-primary btn-lg" id="submitButton">
+            <i class="fas fa-upload me-2" aria-hidden="true"></i> Subir y Procesar Archivo
+          </button>
+        </div>
+
+        {# Barra de Progreso (Indeterminada) #}
+        {# Se muestra vía JS durante el envío #}
+        <div class="progress mt-4 d-none" id="uploadProgressContainer" aria-live="polite">
+          <div class="progress-bar progress-bar-striped progress-bar-animated"
+               role="progressbar"
+               style="width: 100%"
+               aria-valuemin="0" aria-valuemax="100" {# Aunque indeterminada, valores son útiles #}
+               aria-describedby="uploadProgressText">
+               <span id="uploadProgressText" class="visually-hidden">Progreso de subida en curso</span> {# Texto para lectores de pantalla #}
+          </div>
+        </div>
+      </form> {# Fin del formulario #}
+    </div> {# Fin de card-body #}
+
+    {# Pie de la tarjeta con enlace opcional a documentación #}
+    <div class="card-footer text-center bg-light py-3">
+      {% if documentation_url %}
+        <small class="text-muted">¿Necesitas ayuda con el formato? Consulta la <a href="{{ documentation_url }}" class="alert-link" target="_blank" rel="noopener noreferrer">documentación de formato de archivos</a>.</small>
+      {% else %}
+         <small class="text-muted">Asegúrate de que tu archivo cumple con el formato esperado.</small>
+      {% endif %}
+    </div>
+  </div> {# Fin de upload-card #}
+</div> {# Fin de container-fluid #}
+{% endblock %} {# Fin de block content #}
+
+{% block page_scripts %}
+{{ super() }} {# Importa scripts del layout base si los hubiera #}
+<script>
+// Ejecutar script cuando el DOM esté completamente cargado
+document.addEventListener('DOMContentLoaded', () => {
+
+  // --- Selección de Elementos del DOM ---
+  const uploadForm = document.getElementById('uploadForm');
+  const submitButton = document.getElementById('submitButton');
+  const progressContainer = document.getElementById('uploadProgressContainer');
+  const progressBar = progressContainer ? progressContainer.querySelector('.progress-bar') : null;
+  const fileInput = document.getElementById('fileInput'); // ID consistente con el HTML
+  const analysisTypeSelect = document.getElementById('analysis_type'); // ID consistente con el HTML
+  const jsErrorContainer = document.getElementById('js-error-message'); // Div para errores JS
+  const jsErrorText = document.getElementById('js-error-text'); // Span dentro del div de error
+
+  // --- Verificación de Elementos Esenciales ---
+  // Si algún elemento clave no se encuentra, loguea un error y detiene la ejecución del script
+  if (!uploadForm || !submitButton || !progressContainer || !progressBar || !fileInput || !analysisTypeSelect || !jsErrorContainer || !jsErrorText) {
+      console.error("Error crítico: Uno o más elementos esenciales del DOM para el formulario de subida no se encontraron. La funcionalidad de subida con JavaScript no operará correctamente.");
+      // Podrías mostrar un mensaje al usuario aquí si lo consideras necesario
+      return; // Detener ejecución del script
+  }
+
+  // --- Constantes y Funciones Auxiliares ---
+  // Regex para validar extensiones permitidas (insensible a mayúsculas/minúsculas)
+  // Definida fuera del listener para eficiencia
+  const ALLOWED_EXTENSIONS = /(\.xlsx|\.xls|\.csv)$/i;
+
+  // Función para mostrar un mensaje de error en el contenedor designado
+  const displayJsError = (message) => {
+      jsErrorText.textContent = message; // Establece el texto del error
+      jsErrorContainer.style.display = 'block'; // Muestra el contenedor de error
+      jsErrorContainer.focus(); // Da foco al contenedor para accesibilidad
+      // Opcional: Desplazar la vista hacia el mensaje de error
+      jsErrorContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  // Función para ocultar el contenedor de mensajes de error
+  const hideJsError = () => {
+      jsErrorText.textContent = ''; // Limpia el texto
+      jsErrorContainer.style.display = 'none'; // Oculta el contenedor
+  };
+
+  // Función para resetear el estado visual del formulario
+  const resetFormValidationState = () => {
+      // Quita las clases de validación de Bootstrap del formulario
+      uploadForm.classList.remove('was-validated');
+      // Quita la clase 'is-invalid' de los campos específicos
+      fileInput.classList.remove('is-invalid');
+      analysisTypeSelect.classList.remove('is-invalid');
+      // Oculta cualquier mensaje de error JS previo
+      hideJsError();
+  };
+
+
+  // --- Manejador del Evento Submit del Formulario ---
+  uploadForm.addEventListener('submit', (event) => {
+    // 1. Preparación inicial al intentar enviar
+    resetFormValidationState(); // Limpia estados de validación previos
+
+    const selectedFile = fileInput.files.length > 0 ? fileInput.files[0] : null;
+
+    // 2. Validación HTML5 básica (campos requeridos)
+    if (!uploadForm.checkValidity()) {
+      event.preventDefault(); // Detiene el envío del formulario
+      event.stopPropagation(); // Detiene la propagación del evento
+      uploadForm.classList.add('was-validated'); // Muestra los mensajes de feedback de Bootstrap
+      // Encuentra el primer campo inválido y ponle foco para accesibilidad
+      const firstInvalidField = uploadForm.querySelector(':invalid');
+      if (firstInvalidField) {
+          firstInvalidField.focus();
+      }
+      // displayJsError("Por favor, completa todos los campos requeridos marcados en rojo."); // Opcional
+      return; // No continuar
+    }
+
+    // 3. Validación específica de la extensión del archivo (si se seleccionó uno)
+    if (selectedFile && !ALLOWED_EXTENSIONS.exec(selectedFile.name)) {
+        event.preventDefault(); // Detiene el envío
+        event.stopPropagation();
+        // Muestra error específico sobre la extensión
+        displayJsError('Extensión de archivo no permitida. Solo se aceptan archivos .xlsx, .xls o .csv.');
+        fileInput.value = ''; // Limpiar el input para forzar nueva selección
+        fileInput.classList.add('is-invalid'); // Marcar visualmente el campo como inválido
+        fileInput.focus(); // Poner foco en el campo problemático
+        return; // No continuar
+    }
+
+    // --- Si todas las validaciones pasan ---
+    // 4. Mostrar feedback de carga y deshabilitar botón
+    progressContainer.classList.remove('d-none'); // Muestra la barra de progreso
+    progressBar.setAttribute('aria-valuenow', '100'); // Para indicar actividad (aunque sea indeterminada)
+
+    submitButton.disabled = true; // Deshabilita el botón para evitar envíos múltiples
+    // Cambia el contenido del botón para indicar carga
+    submitButton.innerHTML = `
+      <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      <span class="ms-2">Procesando...</span>
+      <span class="visually-hidden">Subiendo y procesando archivo</span>`; // Texto accesible para carga
+
+    // El formulario se enviará ahora de forma normal, ya que no se llamó a preventDefault() en este flujo
+
+  }); // Fin del listener 'submit'
+
+
+  // --- Manejadores para Resetear Validación al Cambiar Inputs ---
+  // Escucha cambios en el input de archivo y el select de tipo de análisis
+  [fileInput, analysisTypeSelect].forEach(inputElement => {
+    if (inputElement) {
+        inputElement.addEventListener('change', () => {
+            // Cuando el usuario cambia el valor, se resetea el estado de validación visual
+            // y se ocultan los mensajes de error JS.
+            resetFormValidationState();
+        });
+        // También resetea al recibir foco, útil si un error se marcó sin cambio
+        inputElement.addEventListener('focus', () => {
+             resetFormValidationState();
+        });
+    }
+  }); // Fin del forEach para listeners 'change' y 'focus'
+
+}); // Fin del listener DOMContentLoaded
+</script>
+{% endblock %} {# Fin de block page_scripts #}

@@ -1,0 +1,275 @@
+{% extends 'layout.html' %} {# Asume que layout.html ya está actualizado con tus últimos cambios #}
+
+{% block title %}Dashboard - Pricing Suite{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Hereda estilos de layout.html #}
+<style>
+    /* Estilos específicos si son necesarios */
+    .stat-card i { font-size: 2rem; opacity: 0.6; }
+    .stat-card .card-title { font-size: 1.5rem; font-weight: 700; color: var(--bbva-primary); }
+    .stat-card .card-text { color: var(--bbva-gray); }
+    .table th { font-weight: 600; color: var(--bbva-primary); }
+    .table td .badge { font-size: 0.8rem; padding: 0.4em 0.7em; }
+    .action-buttons a, .action-buttons button { margin-right: 5px; }
+    .action-buttons .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <h1 class="mt-4 mb-4">Dashboard Principal</h1>
+
+    {# Espera una variable 'stats' (dict) pasada desde la vista main.dashboard #}
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card bbva-card h-100 shadow-sm stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="card-title">{{ stats.total_files | default(0) }}</div>
+                        <div class="card-text">Archivos Cargados</div>
+                    </div>
+                    <i class="fas fa-file-alt text-primary"></i>
+                </div>
+                <div class="card-footer bg-white border-top-0 pt-0 text-end">
+                     {# CORRECCIÓN 1: Usando 'main.upload_file' #}
+                     <a class="small text-decoration-none" href="{{ url_for('main.upload_file') }}">Cargar nuevo...</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card bbva-card h-100 shadow-sm stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="card-title">{{ stats.maxdiff_analyses | default(0) }}</div>
+                        <div class="card-text">Análisis MaxDiff</div>
+                    </div>
+                     <i class="fas fa-chart-bar text-success"></i>
+                </div>
+                 <div class="card-footer bg-white border-top-0 pt-0 text-end">
+                     {# CONFIRMADO: Usa 'maxdiff.index' #}
+                     <a class="small text-decoration-none" href="{{ url_for('maxdiff.index') }}">Ver análisis...</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card bbva-card h-100 shadow-sm stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="card-title">{{ stats.comstrat_analyses | default(0) }}</div>
+                        <div class="card-text">Análisis ComStrat</div>
+                    </div>
+                     <i class="fas fa-balance-scale text-info"></i>
+                </div>
+                 <div class="card-footer bg-white border-top-0 pt-0 text-end">
+                    {# CONFIRMADO: Usa 'comstrat.index' #}
+                     <a class="small text-decoration-none" href="{{ url_for('comstrat.index') }}">Ver análisis...</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+             {# Ejemplo con otra estadística #}
+            <div class="card bbva-card h-100 shadow-sm stat-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="card-title">{{ stats.pending_tasks | default(0) }}</div>
+                        <div class="card-text">Tareas Pendientes</div>
+                    </div>
+                     <i class="fas fa-tasks text-warning"></i>
+                </div>
+                 <div class="card-footer bg-white border-top-0 pt-0 text-end">
+                     {# Enlace a la sección de archivos recientes en esta página #}
+                     <a class="small text-decoration-none" href="#recent-files">Ver detalles...</a>
+                 </div>
+            </div>
+        </div>
+    </div>{# Espera una variable 'uploaded_files' (list/iterator) pasada desde la vista main.dashboard #}
+    <div class="card bbva-card shadow-sm mb-4" id="recent-files">
+        <div class="card-header bbva-card-header">
+            <i class="fas fa-table me-1"></i>
+            Archivos Procesados Recientemente
+        </div>
+        <div class="card-body">
+            {% if uploaded_files and uploaded_files|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Nombre de Archivo</th>
+                            <th>Tipo Análisis</th>
+                            <th>Fecha Carga</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {# Cada 'file' debe ser un dict/obj con: filename, analysis_type, upload_date, status #}
+                        {% for file in uploaded_files %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-file-excel text-success me-2" title="Archivo Excel"></i> {# Ajustar icono si soportas CSV #}
+                                {{ file.filename | e }} {# Escapado HTML por seguridad #}
+                            </td>
+                            <td>
+                                {# CORRECCIÓN 3: Bloque de badges actualizado #}
+                                {% if file.analysis_type == 'maxdiff' %}
+                                  <span class="badge bg-success">MaxDiff</span>
+                                {% elif file.analysis_type == 'comstrat' %}
+                                  <span class="badge bg-info">ComStrat</span>
+                                {% elif file.analysis_type == 'moca' %}
+                                  <span class="badge bg-warning">MOCA</span>
+                                {% elif file.analysis_type == 'series' %}
+                                  <span class="badge bg-secondary">Series</span>
+                                {% else %}
+                                  <span class="badge bg-light text-dark">{{ file.analysis_type | default('N/D') | e }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {# Formato de fecha #}
+                                {{ file.upload_date.strftime('%Y-%m-%d %H:%M') if file.upload_date else 'N/D' }}
+                            </td>
+                            <td>
+                                {# Badges de Estado #}
+                                {% if file.status == 'completed' %}
+                                    <span class="badge bg-primary">Completado</span>
+                                {% elif file.status == 'processing' %}
+                                    <span class="badge bg-warning text-dark">Procesando...</span>
+                                 {% elif file.status == 'pending' %}
+                                    <span class="badge bg-secondary">Pendiente</span>
+                                {% elif file.status == 'error' %}
+                                    <span class="badge bg-danger">Error</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark">{{ file.status | default('Desconocido') | e }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="action-buttons">
+                                {# Botones de Acción #}
+                                {% if file.status == 'completed' %}
+                                    {# CORRECCIÓN 4: Añadidos botones para MOCA y Series #}
+                                    {% if file.analysis_type == 'maxdiff' %}
+                                        <a href="{{ url_for('maxdiff.results', filename=file.filename) }}" class="btn btn-sm btn-outline-primary" title="Ver Resultados MaxDiff">
+                                            <i class="fas fa-chart-pie"></i> Resultados
+                                        </a>
+                                    {% elif file.analysis_type == 'comstrat' %}
+                                        <a href="{{ url_for('comstrat.results', filename=file.filename) }}" class="btn btn-sm btn-outline-info" title="Ver Resultados ComStrat">
+                                            <i class="fas fa-chart-pie"></i> Resultados
+                                        </a>
+                                    {% elif file.analysis_type == 'moca' %}
+                                        <a href="{{ url_for('moca.results', filename=file.filename) }}"
+                                           class="btn btn-sm btn-outline-info" title="Ver Resultados MOCA">
+                                          <i class="fas fa-chart-pie"></i> Resultados
+                                        </a>
+                                    {% elif file.analysis_type == 'series' %}
+                                        <a href="{{ url_for('series.results', filename=file.filename) }}"
+                                           class="btn btn-sm btn-outline-info" title="Ver Resultados Series">
+                                          <i class="fas fa-chart-line"></i> Resultados
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+
+                                {# Botón Vista Previa #}
+                                {# CORRECCIÓN 2: Usando 'main.preview_file' #}
+                                <a href="{{ url_for('main.preview_file', filename=file.filename) }}" class="btn btn-sm btn-outline-secondary" title="Vista Previa de {{ file.filename | e }}">
+                                    <i class="fas fa-eye"></i> Preview
+                                </a>
+
+                                {# Botón Eliminar #}
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal" data-filename="{{ file.filename | e }}" title="Eliminar Archivo">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+                <div class="alert alert-light text-center" role="alert">
+                  <i class="fas fa-info-circle me-2"></i> No hay archivos cargados recientemente.
+                  {# CORRECCIÓN 1: Usando 'main.upload_file' #}
+                  <a href="{{ url_for('main.upload_file') }}" class="alert-link">Carga tu primer archivo</a>.
+                </div>
+            {% endif %}
+        </div>{# Sección de Paginación #}
+        {# Espera un objeto 'pagination' (ej. de Flask-SQLAlchemy Paginate) o None #}
+        {% if pagination and pagination.pages > 1 %}
+        <div class="card-footer bg-light d-flex justify-content-center">
+             <nav aria-label="Navegación de archivos">
+              <ul class="pagination mb-0">
+                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                  <a class="page-link" href="{{ url_for('main.dashboard', page=pagination.prev_num) if pagination.has_prev else '#' }}" aria-label="Anterior">&laquo;</a>
+                </li>
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                  {% if page_num %}
+                    <li class="page-item {% if pagination.page == page_num %}active{% endif %}">
+                      <a class="page-link" href="{{ url_for('main.dashboard', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  {% endif %}
+                {% endfor %}
+                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                  <a class="page-link" href="{{ url_for('main.dashboard', page=pagination.next_num) if pagination.has_next else '#' }}" aria-label="Siguiente">&raquo;</a>
+                </li>
+              </ul>
+            </nav>
+        </div>
+        {% endif %} {# Fin Paginación #}
+
+    </div>
+</div>{# Modal de Confirmación de Eliminación #}
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteConfirmModalLabel">Confirmar Eliminación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        ¿Estás seguro de que quieres eliminar el archivo <strong id="filename-to-delete"></strong>? Esta acción no se puede deshacer.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        {# Formulario para enviar la eliminación (JS completa la action) #}
+        <form id="delete-form" method="POST" action="" style="display: inline;">
+             {# Incluir token CSRF si se está usando Flask-WTF/CSRFProtect #}
+             {% if csrf_token %} <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> {% endif %}
+             <button type="submit" class="btn btn-danger">Eliminar Archivo</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    if (deleteConfirmModal) {
+        deleteConfirmModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const filename = button.getAttribute('data-filename');
+            const modalBodyFilename = deleteConfirmModal.querySelector('#filename-to-delete');
+            const deleteForm = deleteConfirmModal.querySelector('#delete-form');
+
+            modalBodyFilename.textContent = filename;
+            // Construye URL para 'main.delete_file', asegúrate que exista y acepte POST
+            try {
+                 // Usamos un placeholder y replace para construir la URL dinámicamente
+                 const deleteUrlTemplate = "{{ url_for('main.delete_file', filename='__FILENAME__') }}";
+                 const deleteUrl = deleteUrlTemplate.replace('__FILENAME__', encodeURIComponent(filename)); // Codifica el nombre por si tiene caracteres especiales
+                 deleteForm.action = deleteUrl;
+            } catch (e) {
+                console.error("Error generando URL para main.delete_file. ¿Está definida la ruta?", e);
+                // Podrías deshabilitar el botón de borrar si la URL no se puede generar
+                deleteForm.action = "#"; // Evitar envío accidental
+                deleteForm.querySelector('button[type="submit"]').disabled = true;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'layout.html' %} {# CHECKLIST: Extiende layout base #}
+
+{# CHECKLIST: Espera 'source_ref' del contexto para el título #}
+{% block title %}Exportar Resultados: {{ source_ref | default('Análisis') }} - Pricing Suite{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    /* Estilos consistentes con versiones anteriores */
+    .export-card { border: 1px solid var(--bbva-border); border-radius: 0.5rem; transition: box-shadow 0.2s ease-in-out; height: 100%; display: flex; flex-direction: column; }
+    .export-card:hover { box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1); }
+    .export-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .icon-excel { color: #1D6F42; }
+    .icon-pdf { color: #AE0E0E; }
+    .icon-ppt { color: #D04423; }
+    .export-card .card-body { flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .export-card .btn { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    {# Título de la página #}
+    <h1 class="mt-4 mb-2">Exportar Resultados</h1>
+
+    {# Contexto del análisis a exportar #}
+    {# CHECKLIST: Espera 'analysis_type' y 'source_ref' del contexto #}
+    <p class="lead text-muted mb-5">
+        Prepara la descarga de los resultados del análisis
+        <span class="badge bg-primary fs-6 align-middle">{{ analysis_type | upper | e if analysis_type else 'Desconocido' }}</span>
+        originado desde: <strong class="text-dark">{{ source_ref | e if source_ref else 'Referencia no especificada' }}</strong>.
+    </p>
+
+    {# Grid con las opciones de exportación #}
+    <div class="row g-4 justify-content-center">
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card export-card text-center shadow-sm">
+                <div class="card-body">
+                    <div>
+                        <i class="fas fa-file-excel export-icon icon-excel"></i>
+                        <h5 class="card-title">Exportar a Excel (.xlsx)</h5>
+                        <p class="card-text text-muted small">
+                            Descarga un archivo Excel con tablas de datos, métricas clave y resultados principales del análisis.
+                        </p>
+                    </div>
+                    {# CHECKLIST: Requiere endpoint 'main.export_file(analysis_type, source_ref, format)' en Flask #}
+                    <a href="{{ url_for('main.export_file', analysis_type=analysis_type, source_ref=source_ref, format='xlsx') }}"
+                       class="btn btn-success mt-3">
+                        <i class="fas fa-download me-2"></i>Descargar XLSX
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card export-card text-center shadow-sm">
+                <div class="card-body">
+                     <div>
+                        <i class="fas fa-file-pdf export-icon icon-pdf"></i>
+                        <h5 class="card-title">Exportar a PDF (.pdf)</h5>
+                        <p class="card-text text-muted small">
+                            Genera un informe PDF listo para compartir, incluyendo gráficos principales, tablas resumen e insights clave.
+                        </p>
+                    </div>
+                     {# CHECKLIST: Requiere que 'main.export_file' pueda generar PDF #}
+                    <a href="{{ url_for('main.export_file', analysis_type=analysis_type, source_ref=source_ref, format='pdf') }}"
+                       class="btn btn-danger mt-3">
+                        <i class="fas fa-download me-2"></i>Descargar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6">
+            <div class="card export-card text-center shadow-sm">
+                <div class="card-body">
+                     <div>
+                        <i class="fas fa-file-powerpoint export-icon icon-ppt"></i>
+                        <h5 class="card-title">Exportar a PowerPoint (.pptx)</h5>
+                        <p class="card-text text-muted small">
+                            Crea una presentación PPTX con gráficos y hallazgos clave, lista para usar o editar para tus reuniones.
+                        </p>
+                    </div>
+                    {# CHECKLIST: Requiere que 'main.export_file' pueda generar PPTX #}
+                     <a href="{{ url_for('main.export_file', analysis_type=analysis_type, source_ref=source_ref, format='pptx') }}"
+                       class="btn btn-warning text-dark mt-3">
+                        <i class="fas fa-download me-2"></i>Descargar PPTX
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div><div class="text-center mt-5">
+        {# CHECKLIST: Requiere endpoint 'main.dashboard' #}
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+        </a>
+        {# CHECKLIST: Opción para volver a resultados específicos (descomentar si se implementa) #}
+        {# Requiere que la ruta '.results' exista en cada blueprint de análisis y acepte el source_ref como 'filename' #}
+        {# {% if analysis_type and source_ref %}
+               {% set results_endpoint = analysis_type + '.results' %}
+               {% if results_endpoint in endpoints %} {# Chequeo extra si pasas 'endpoints' al contexto #}
+                   {# <a href="{{ url_for(results_endpoint, filename=source_ref) }}" class="btn btn-outline-secondary ms-2">
+                       <i class="fas fa-undo me-2"></i> Volver a Resultados de {{ analysis_type | upper }}
+                   </a> #}
+               {# {% endif %}
+           {% endif %} #}
+    </div>
+
+</div>{% endblock %}
+
+{% block page_scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    console.log("Página de exportación cargada para:", {
+        type: "{{ analysis_type | default('N/A') | escapejs }}",
+        ref: "{{ source_ref | default('N/A') | escapejs }}"
+    });
+
+    // Script opcional para feedback al usuario al hacer clic en descargar
+    const downloadButtons = document.querySelectorAll('.export-card .btn');
+    downloadButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            // Podríamos prevenir comportamiento por defecto si la generación es asíncrona
+            // event.preventDefault();
+            console.log(`Iniciando descarga para: ${this.href}`);
+            // Mostrar un spinner simple (se quitará al navegar/descargar)
+            // this.disabled = true;
+            // this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generando...';
+        });
+    });
+});
+</script>
+{% endblock %}

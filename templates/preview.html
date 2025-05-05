@@ -1,0 +1,148 @@
+{% extends 'layout.html' %} {# Asegúrate que layout.html está actualizado #}
+
+{# El título incluirá el nombre del archivo que se está previsualizando #}
+{% block title %}Vista Previa: {{ filename | default('Archivo') }} - Pricing Suite{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Hereda estilos de layout.html #}
+<style>
+    /* Estilos específicos para la página de vista previa */
+    .preview-card {
+        margin-top: 2rem;
+    }
+    .table-preview th {
+        /* Estilos específicos para encabezados de tabla si son necesarios */
+        background-color: var(--bbva-light); /* Fondo claro para encabezados */
+        position: sticky; /* Fijar encabezados al hacer scroll vertical */
+        top: 0; /* Necesario para sticky */
+        z-index: 1; /* Asegurar que estén por encima del contenido */
+    }
+    .table-responsive {
+        max-height: 60vh; /* Limita la altura de la tabla para evitar páginas muy largas */
+        overflow-y: auto; /* Scroll vertical si la tabla es muy alta */
+        overflow-x: auto; /* Scroll horizontal si la tabla es muy ancha */
+         border: 1px solid var(--bbva-border);
+         border-radius: 0.375rem; /* Bootstrap's default border-radius */
+    }
+     .dataframe-info pre {
+         background-color: var(--bbva-light);
+         border: 1px solid var(--bbva-border);
+         padding: 1rem;
+         border-radius: 0.375rem;
+         font-size: 0.9em;
+         white-space: pre-wrap; /* Para que las líneas largas se ajusten */
+         word-wrap: break-word;
+     }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    {# Espera la variable 'filename' desde la vista Flask #}
+    <h1 class="mt-4 mb-4">Vista Previa de Datos: <span class="text-primary">{{ filename | e if filename else 'Archivo Desconocido' }}</span></h1>
+
+    {# Mostrar error si ocurrió al intentar leer el archivo #}
+    {# Espera la variable 'error' (string) o None #}
+    {% if error %}
+        <div class="alert alert-danger d-flex align-items-center shadow-sm" role="alert">
+          <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+          <div>
+            <strong>Error al previsualizar el archivo:</strong><br>
+            {{ error | e }}
+            <hr>
+            <p class="mb-0">Por favor, verifica que el archivo exista, no esté corrupto y tenga el formato esperado (.xlsx o .csv). Intenta <a href="{{ url_for('main.upload') }}" class="alert-link">subirlo de nuevo</a> o contacta con soporte.</p>
+          </div>
+        </div>
+        <div class="mt-4">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+            </a>
+        </div>
+
+    {# Si no hay error, mostrar la vista previa de los datos #}
+    {% else %}
+        <div class="card bbva-card shadow-sm preview-card">
+            <div class="card-header bbva-card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="fas fa-table me-2"></i>
+                    Contenido del Archivo (Primeras Filas)
+                </span>
+                {# Espera la variable 'dataframe_shape' (tuple/list) o None #}
+                {% if dataframe_shape %}
+                    <span class="badge bg-secondary">Dimensiones: {{ dataframe_shape[0] }} filas x {{ dataframe_shape[1] }} columnas</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {# Espera 'dataframe_head' (string HTML generado por df.to_html()) o None #}
+                {% if dataframe_head %}
+                    <p class="text-muted small mb-2">Mostrando las primeras filas para verificación. Revisa que las columnas y los datos sean los esperados.</p>
+                    <div class="table-responsive">
+                        {# IMPORTANTE: Usa '| safe' porque dataframe_head contiene HTML. #}
+                        {# Asegúrate de que el HTML generado en la vista Flask con df.to_html() #}
+                        {# incluya las clases de Bootstrap deseadas (ej. 'table table-sm table-striped table-hover table-preview') #}
+                        {# y que cualquier dato potencialmente inseguro haya sido saneado ANTES de generar el HTML. #}
+                        {{ dataframe_head | safe }}
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning" role="alert">
+                      <i class="fas fa-info-circle me-2"></i> No se pudo generar la vista previa de las filas del DataFrame.
+                    </div>
+                {% endif %}
+
+                {# Sección Opcional: Información del DataFrame (similar a df.info()) #}
+                {# Espera 'dataframe_info' (string preformateado) o None #}
+                {% if dataframe_info %}
+                    <h5 class="mt-4 mb-3">Información de Columnas</h5>
+                     <div class="dataframe-info">
+                        <pre><code>{{ dataframe_info | e }}</code></pre> {# Usar <pre> y <code> para texto preformateado #}
+                    </div>
+                {% endif %}
+
+            </div> {# Fin card-body #}
+
+            <div class="card-footer bg-light text-end py-3">
+                {# Botones de acción relevantes #}
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                     <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+                </a>
+                 {# Podrías añadir un botón para proceder al análisis si esta preview es un paso intermedio #}
+                {# <a href="{{ url_for('analysis_blueprint.start_analysis', filename=filename) }}" class="btn btn-primary"> #}
+                {#    <i class="fas fa-cogs me-2"></i> Proceder con Análisis #}
+                {# </a> #}
+                 {# Podrías añadir un botón para descargar el archivo original #}
+                 {# <a href="{{ url_for('main.download_file', filename=filename) }}" class="btn btn-outline-success"> #}
+                 {#    <i class="fas fa-download me-2"></i> Descargar Archivo Original #}
+                 {# </a> #}
+            </div> {# Fin card-footer #}
+
+        </div> {# Fin card #}
+    {% endif %} {# Fin chequeo de error #}
+
+</div>{% endblock %}
+
+{% block page_scripts %}
+{{ super() }} {# Hereda scripts de layout.html si los hubiera #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Puedes añadir JS específico para la página de preview si es necesario
+    // Por ejemplo, inicializar tooltips en la tabla si los hubiera, etc.
+    console.log("Página de vista previa cargada para el archivo: {{ filename | default('N/A') | escapejs }}");
+
+     // Ejemplo: Añadir clase a las tablas generadas por pandas si no se hizo en el backend
+     // Esto es MENOS ideal que hacerlo en el backend con df.to_html(classes=...)
+     /*
+     const tables = document.querySelectorAll('.table-responsive table');
+     tables.forEach(table => {
+         table.classList.add('table', 'table-sm', 'table-striped', 'table-hover', 'table-preview');
+         // Añadir thead-light o similar a los encabezados si es necesario
+         const thead = table.querySelector('thead');
+         if (thead) {
+            // Bootstrap 5 usa clases como 'table-light' directamente en 'thead' o 'th'
+            // thead.classList.add('table-light'); // O aplicar a cada th
+         }
+     });
+     */
+});
+</script>
+{% endblock %}

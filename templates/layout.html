@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Herramienta avanzada de Pricing Intelligence para BBVA BECO">
+    <meta name="author" content="BBVA Data & Analytics Team">
+
+    <title>{% block title %}BBVA BECO | Pricing Suite{% endblock %}</title>
+
+    {% block styles %}
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+        <style>
+            :root {
+                --bbva-primary: #004481;
+                --bbva-secondary: #0072CE;
+                --bbva-accent: #00B4B3;
+                --bbva-dark: #1A1A1A;
+                --bbva-light: #F8F9FC;
+                --bbva-gray: #6C757D;
+                --bbva-border: #E0E3E7;
+                --bbva-font: 'Source Sans 3', sans-serif;
+                --sidebar-width: 280px;
+            }
+            body { font-family: var(--bbva-font); background-color: var(--bbva-light); color: var(--bbva-dark); min-height: 100vh; display: flex; flex-direction: row; }
+            .sidebar { background: linear-gradient(180deg, var(--bbva-primary) 0%, #003366 100%); color: white; width: var(--sidebar-width); height: 100vh; position: fixed; top: 0; left: 0; z-index: 1030; box-shadow: 2px 0 10px rgba(0,0,0,0.1); transition: transform 0.3s ease-in-out; display: flex; flex-direction: column; overflow-y: auto; }
+            .sidebar-brand { padding: 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+            .sidebar-brand img { height: 30px; width: auto; }
+            .sidebar-brand-text { font-weight: 700; font-size: 1.2rem; white-space: nowrap; }
+            .sidebar-nav { padding: 1rem 0; flex-grow: 1; }
+            .nav-section-title { color: rgba(255,255,255,0.6); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; padding: 0.75rem 1.5rem; margin-top: 1rem; white-space: nowrap; }
+            .nav-section-title:first-of-type { margin-top: 0; }
+            .nav-item { margin: 0.25rem 1rem; }
+            .nav-link { color: rgba(255,255,255,0.8); padding: 0.75rem 1.5rem; border-radius: 8px; display: flex; align-items: center; gap: 12px; transition: background-color 0.2s, color 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.1); color: white; text-decoration: none; }
+            .nav-link i.fa-fw { width: 1.25em; text-align: center; }
+            .main-content { margin-left: var(--sidebar-width); flex-grow: 1; padding: 2rem; transition: margin-left 0.3s ease-in-out; overflow-y: auto; display: flex; flex-direction: column; min-height: 100vh; }
+            .page-footer { margin-top: auto; padding-top: 1.5rem; padding-bottom: 1rem; text-align: center; font-size: 0.85rem; color: var(--bbva-gray); }
+            .flash-container { position: fixed; top: 1rem; right: 1rem; z-index: 1056; width: 90%; max-width: 450px; }
+            @media (max-width: 991.98px) {
+                .sidebar { transform: translateX(calc(-1 * var(--sidebar-width))); z-index: 1045; }
+                .sidebar.show { transform: translateX(0); box-shadow: 2px 0 15px rgba(0,0,0,0.2); }
+                .main-content { margin-left: 0; }
+                .mobile-menu-toggle { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1035; }
+                .offcanvas-backdrop.show { z-index: 1040; }
+            }
+        </style>
+    {% endblock %}
+
+    {# Bloque añadido para scripts en el head específicos de página #}
+    {% block head_scripts %}{% endblock %}
+
+</head>
+
+<body>
+    <aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+        <div class="offcanvas-header d-lg-none">
+             <h5 class="offcanvas-title text-white" id="sidebarMenuLabel">Menú Principal</h5>
+             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
+        </div>
+
+        <div class="offcanvas-body d-flex flex-column p-0">
+            <div class="sidebar-brand">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/BBVA_2019.svg/2560px-BBVA_2019.svg.png" alt="BBVA Logo">
+                <span class="sidebar-brand-text">Pricing Suite</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Principal</div>
+                <div class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}"
+                       href="{{ url_for('main.dashboard') }}">
+                        <i class="fas fa-tachometer-alt fa-fw"></i> <span>Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="nav-section-title">Flujo de Trabajo</div>
+                <div class="nav-item">
+                    {# AJUSTADO: Asumiendo que la función se llama 'upload_file'. Verifica tu routes.py #}
+                    <a class="nav-link {% if request.endpoint == 'main.upload_file' %}active{% endif %}"
+                       href="{{ url_for('main.upload_file') }}">
+                        <i class="fas fa-file-upload fa-fw"></i> <span>Cargar Datos</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    {# AJUSTADO: Asumiendo 'preview_file' y mostrando cómo pasar parámetro #}
+                    {# Nota: 'filename_for_preview' debe existir en el contexto Jinja pasado desde la vista Flask #}
+                    <a class="nav-link {% if request.endpoint == 'main.preview_file' %}active{% endif %}"
+                       href="{{ url_for('main.preview_file', filename=filename_for_preview if filename_for_preview else '_default') }}">
+                        <i class="fas fa-eye fa-fw"></i> <span>Vista Previa</span>
+                    </a>
+                </div>
+
+                 <div class="nav-section-title">Análisis</div>
+                <div class="nav-item">
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('maxdiff.') %}active{% endif %}"
+                       href="{{ url_for('maxdiff.index') }}">
+                        <i class="fas fa-chart-bar fa-fw"></i> <span>Análisis MaxDiff</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('comstrat.') %}active{% endif %}"
+                       href="{{ url_for('comstrat.index') }}">
+                        <i class="fas fa-balance-scale fa-fw"></i> <span>Análisis ComStrat</span>
+                    </a>
+                </div>
+                 <div class="nav-item">
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('moca.') %}active{% endif %}"
+                       href="{{ url_for('moca.index') }}">
+                        <i class="fas fa-map-marker-alt fa-fw"></i> <span>Análisis MOCA</span>
+                    </a>
+                </div>
+                <div class="nav-item">
+                    <a class="nav-link {% if request.endpoint and request.endpoint.startswith('series.') %}active{% endif %}"
+                       href="{{ url_for('series.index') }}">
+                        <i class="fas fa-chart-line fa-fw"></i> <span>Análisis Series</span>
+                    </a>
+                </div>
+
+                <div class="nav-section-title">Exportar</div>
+                <div class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'main.export_options' %}active{% endif %}"
+                       href="{{ url_for('main.export_options') }}">
+                        <i class="fas fa-file-export fa-fw"></i> <span>Exportar Resultados</span>
+                    </a>
+                </div>
+            </nav>
+
+            <div class="mt-auto p-3 border-top border-white border-opacity-10 text-center text-white-50 small">
+                 {# AJUSTADO: Usando variable de entorno Jinja para la versión #}
+                 Versión App: {{ APP_VERSION | default('N/A') }}
+                 {# Recordatorio: APP_VERSION debe estar en el contexto global de Jinja #}
+            </div>
+        </div>
+    </aside>
+
+    <button class="btn btn-primary d-lg-none mobile-menu-toggle" type="button"
+            data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu"
+            aria-controls="sidebarMenu" aria-label="Toggle navigation">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <main class="main-content">
+        <div class="flash-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm mb-3" role="alert">
+                            <i class="fas fa-fw me-2 {% if category == 'success' %}fa-check-circle{% elif category == 'danger' or category == 'error' %}fa-times-circle{% elif category == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% block content %}{% endblock %}
+
+        <footer class="page-footer">
+             BBVA BECO Pricing Intelligence &copy; {% block footer_year %}{{ now().year if now else '?'}}{% endblock %}
+             {# CONFIRMADO: Usa now() del contexto global Jinja #}
+        </footer>
+    </main>
+
+    {% block scripts %}
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Auto-dismiss flash messages
+                const autoDismissAlerts = document.querySelectorAll('.flash-container .alert');
+                autoDismissAlerts.forEach(alert => {
+                    setTimeout(() => {
+                        const alertInstance = bootstrap.Alert.getOrCreateInstance(alert);
+                        if (alertInstance && document.body.contains(alert)) {
+                            alertInstance.close();
+                        }
+                    }, 7000); // 7 segundos
+                });
+
+                // Inicializar Tooltips
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+                [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+            });
+        </script>
+
+        {# Bloque para scripts específicos de cada página hija #}
+        {% block page_scripts %}{% endblock %}
+
+    {% endblock %}
+</body>
+</html>

@@ -1,0 +1,243 @@
+{% extends "layout.html" %} {# Hereda la estructura y estilos base #}
+
+{% block title %}Análisis MOCA – {{ filename | default('Archivo') }} - BBVA Pricing Dashboard{% endblock %}
+
+{% block head %}
+    {{ super() }} {# Incluye contenido del head del layout base #}
+    {# Estilos específicos para la página MOCA #}
+    <style>
+        /* Reutilizar estilos de páginas de resultados anteriores */
+        .table-responsive thead.sticky-top th {
+            background-color: var(--bbva-background-light, #F8F9FA);
+            z-index: 1;
+        }
+        .chart-card .card-body {
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-container {
+            flex-grow: 1;
+            min-height: 500px; /* Más altura para scatter plots con cuadrantes */
+            width: 100%;
+        }
+        .chart-loading-spinner {
+             color: var(--bbva-medium-blue, #0055A4);
+        }
+        .plotly .modebar {
+            padding-top: 5px;
+        }
+        .card-chart-description {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+        }
+        .table th {
+            font-weight: 700;
+            color: var(--bbva-dark-blue);
+            background-color: var(--bbva-background-light);
+        }
+        /* Clases para badges de cuadrantes MOCA (ejemplo) */
+        .badge-moca-strength { background-color: #198754; color: white; } /* Verde */
+        .badge-moca-opportunity { background-color: #ffc107; color: black; } /* Amarillo */
+        .badge-moca-weakness { background-color: #dc3545; color: white; } /* Rojo */
+        .badge-moca-parity { background-color: #6c757d; color: white; } /* Gris */
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+
+    {# --- Cabecera de la Página --- #}
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h1 class="h2"><i class="fas fa-crosshairs me-2" aria-hidden="true"></i>Matriz de Oportunidades Competitivas (MOCA)</h1>
+         <div class="btn-toolbar mb-2 mb-md-0">
+             <a href="{{ url_for('upload') }}" class="btn btn-sm btn-outline-secondary me-2">
+                <i class="fas fa-arrow-left me-1"></i> Subir Otro Archivo
+            </a>
+             <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-tachometer-alt me-1"></i> Ir al Panel Principal
+            </a>
+        </div>
+    </div>
+
+     {# --- Información del Archivo Analizado --- #}
+    <div class="alert alert-light border shadow-sm mb-4" role="alert">
+      <i class="fas fa-file-alt text-primary me-2" aria-hidden="true"></i>
+      Mostrando análisis MOCA para el archivo: <strong class="text-primary">{{ filename | default('No especificado') }}</strong>
+       {# Añadir aquí info sobre qué datos se usan para Performance si es relevante #}
+       {# <span class="ms-3 text-muted small">| Desempeño basado en: Encuesta Competidores Q1</span> #}
+    </div>
+
+    {# --- Tarjeta Principal para el Gráfico MOCA --- #}
+    <div class="card shadow-sm border-light rounded-3 mb-4 chart-card">
+         <div class="card-header bg-white">
+             <h5 class="mb-0 text-secondary"><i class="fas fa-bullseye me-2"></i>Visualización Importancia vs. Desempeño</h5>
+        </div>
+        <div class="card-body">
+            {# <h5 class="card-title text-center text-dark mb-1">Matriz MOCA</h5> #}
+            <p class="card-chart-description text-center">
+                Este gráfico posiciona cada atributo según su **Importancia** para el cliente (eje Y)
+                y el **Desempeño** percibido de nuestra oferta frente a la competencia (eje X).
+                Las líneas indican los promedios, dividiendo el gráfico en cuadrantes estratégicos.
+            </p>
+            <div id="moca-chart" class="chart-container">
+                {# Estado de Carga con Spinner #}
+                <div class="d-flex justify-content-center align-items-center h-100 chart-loading">
+                    <div class="spinner-border chart-loading-spinner" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Cargando gráfico...</span>
+                    </div>
+                    <span class="ms-3 text-muted fs-5">Cargando gráfico MOCA...</span>
+                </div>
+                {# Aquí se renderiza el gráfico Plotly MOCA (Scatter Plot) #}
+            </div>
+        </div>
+    </div>
+
+    {# --- Tabla Detallada de Datos MOCA --- #}
+    <div class="card shadow-sm border-light rounded-3">
+        <div class="card-header bg-white">
+            <h5 class="mb-0 text-secondary"><i class="fas fa-table me-2"></i>Datos Detallados del Análisis MOCA</h5>
+        </div>
+        <div class="card-body p-0">
+            {# Comprobar si moca_data existe #}
+            {% if moca_data is defined and moca_data %} {# Asume lista de dicts o DataFrame #}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered table-sm align-middle w-100 mb-0 caption-top" id="moca-table">
+                        <caption class="px-3 pt-2">Datos numéricos y clasificación estratégica para cada atributo.</caption>
+                        <thead class="table-light sticky-top">
+                            <tr class="text-center">
+                                {# Ajustar cabeceras según los datos reales que genere el backend #}
+                                <th scope="col" class="text-start">Atributo</th>
+                                <th scope="col">Importancia (%)</th>
+                                <th scope="col">Desempeño Relativo (Índice o %)</th>
+                                <th scope="col">Cuadrante MOCA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                             {# Iterar sobre los datos pasados desde Flask #}
+                            {% for item in moca_data %}
+                                <tr class="text-center">
+                                    {# Asumiendo que item es un diccionario o objeto #}
+                                    <td class="text-start fw-medium">{{ item.Atributo | default('N/A') }}</td>
+                                    <td>{{ "%.1f%%"|format(item.Importancia) if item.Importancia is not none else 'N/A' }}</td>
+                                    {# Asumiendo que desempeño es un índice 0-100 o similar #}
+                                    <td>{{ "%.1f"|format(item.Desempeno) if item.Desempeno is not none else 'N/A' }}</td>
+                                    {# Usar clase CSS dinámica basada en el cuadrante #}
+                                    <td>
+                                        <span class="badge rounded-pill {{ get_moca_badge_class(item.Cuadrante) }}">
+                                            {{ item.Cuadrante | default('N/D') }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                 <div class="alert alert-info m-3" role="alert">
+                    <i class="fas fa-info-circle me-2" aria-hidden="true"></i>
+                    No hay datos MOCA disponibles para mostrar. Verifica que se hayan procesado los datos de importancia y desempeño.
+                 </div>
+            {% endif %}
+        </div> {# Fin card-body tabla #}
+    </div> {# Fin card tabla #}
+
+</div> {# Fin container-fluid #}
+{% endblock %}
+
+
+{% block scripts %}
+    {{ super() }} {# Hereda scripts de layout.html #}
+
+    {# Cargar Plotly.js SOLO si no se cargó globalmente en layout.html #}
+    <script src="https://cdn.plot.ly/plotly-latest.min.js" charset="utf-8" defer></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // --- Configuración Común Plotly (Reutilizada) ---
+            const plotlyConfig = {
+                displaylogo: false,
+                responsive: true,
+                modeBarButtonsToRemove: ['sendDataToCloud', 'editInChartStudio', 'lasso2d', 'select2d'], // Quitar selección si no es útil aquí
+                locale: 'es',
+                 modeBarButtonsToAdd: [{
+                     name: 'Download plot as a png',
+                     icon: Plotly.Icons.camera,
+                     click: function(gd) {
+                        // Extraer título dinámicamente o usar uno genérico
+                        const titleText = gd._fullLayout.title.text || 'MOCA_Chart';
+                        const filename = titleText.replace(/ /g, '_').replace(/[^a-zA-Z0-9_]/g, ''); // Limpiar nombre
+                         Plotly.downloadImage(gd, {format: 'png', width: 1000, height: 800, filename: filename});
+                     }
+                 }],
+                 hovermode: 'closest' // Mostrar tooltip del punto más cercano
+            };
+
+            // --- Función Genérica para Renderizar Gráficos (Reutilizada) ---
+             function renderPlotlyChart(containerId, jsonData, config, chartName) {
+                const container = document.getElementById(containerId);
+                const loadingIndicator = container ? container.querySelector('.chart-loading') : null;
+                if (!container) { console.error(`Contenedor #${containerId} no encontrado.`); return; }
+                if(loadingIndicator) loadingIndicator.style.display = 'none';
+                try {
+                    const figData = jsonData; // Asume objeto JS desde |tojson|safe
+                    if (figData && figData.data && figData.layout) {
+                        Plotly.newPlot(containerId, figData.data, figData.layout, config);
+                        console.log(`Gráfico ${chartName} renderizado.`);
+                    } else {
+                        console.error(`Datos JSON para ${chartName} (${containerId}) no válidos/null.`);
+                        container.innerHTML = `<div class="alert alert-warning m-3"><i class="fas fa-exclamation-triangle me-2"></i>Gráfico '${chartName}' no disponible.</div>`;
+                    }
+                } catch (e) {
+                    console.error(`Error renderizando ${chartName} (${containerId}):`, e);
+                    container.innerHTML = `<div class="alert alert-danger m-3"><i class="fas fa-times-circle me-2"></i>Error mostrando gráfico '${chartName}'.</div>`;
+                }
+            }
+
+            // --- Renderizar Gráfico MOCA ---
+            // Espera la variable 'moca_json' desde Flask
+            const mocaJsonData = {{ moca_json | tojson | safe if moca_json else 'null' }};
+            renderPlotlyChart('moca-chart', mocaJsonData, plotlyConfig, 'MOCA');
+
+
+            // --- Manejo de Redimensionamiento (Reutilizado) ---
+            let resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(function() {
+                    const charts = ['moca-chart']; // Solo este gráfico en esta página por ahora
+                    charts.forEach(id => {
+                        const elem = document.getElementById(id);
+                        if (elem && elem.classList.contains('js-plotly-plot')) {
+                            try { Plotly.Plots.resize(elem); } catch (e) { console.warn(`Error redim. #${id}:`, e); }
+                        }
+                    });
+                }, 250);
+            });
+
+            // --- Función Helper para obtener clase CSS de Badge MOCA (Reutilizada/Adaptada) ---
+            // Mapeo de cuadrantes a clases de Bootstrap (ajustar según tus nombres de cuadrante)
+            function get_moca_badge_class(cuadrante) {
+                 const classMap = {
+                    'Fortaleza': 'badge-moca-strength',     // Verde
+                    'Oportunidad': 'badge-moca-opportunity', // Amarillo
+                    'Debilidad': 'badge-moca-weakness',    // Rojo
+                    'Paridad': 'badge-moca-parity',        // Gris
+                    'Inversión': 'badge-moca-parity'       // O un color específico si se distingue
+                 };
+                 // Devolver clase o una por defecto si no coincide
+                 return classMap[cuadrante] || 'bg-light text-dark';
+            }
+             // Aplicar las clases a los badges dinámicamente si no se hizo en Jinja
+             // (El ejemplo Jinja en la tabla ya intenta llamar a esta función)
+             // document.querySelectorAll('#moca-table tbody .badge').forEach(badge => {
+             //     const quadrantText = badge.textContent.trim();
+             //     badge.classList.add(...get_moca_badge_class(quadrantText).split(' '));
+             // });
+
+
+        }); // Fin DOMContentLoaded
+    </script>
+{% endblock %}

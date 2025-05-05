@@ -1,0 +1,104 @@
+{% extends 'layout.html' %} {# Hereda la estructura base para mantener la navegación #}
+
+{# Título dinámico basado en el código y nombre del error #}
+{% block title %}Error {{ error_code | default('Desconocido') }} - {{ error_name | default('Error') }} | Pricing Suite{% endblock %}
+
+{% block styles %}
+{{ super() }} {# Hereda estilos de layout.html #}
+<style>
+    .error-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 70vh; /* Ocupa buena parte de la altura visible */
+        text-align: center;
+    }
+    .error-icon {
+        font-size: 5rem; /* Icono grande */
+        margin-bottom: 1.5rem;
+    }
+    /* Colores específicos para iconos según el error */
+    .text-danger { color: #dc3545 !important; } /* 500s, 400 */
+    .text-warning { color: #ffc107 !important; } /* 404, 403 */
+    .text-info { color: #0dcaf0 !important; } /* Otros 4xx */
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 error-container">
+    <div class="col-lg-8 col-md-10"> {# Limita el ancho del contenido del error #}
+
+        {# --- Icono Dinámico --- #}
+        {# Elige icono y color según el código de error #}
+        {% set icon_class = 'fa-exclamation-circle' %} {# Default icon #}
+        {% set icon_color = 'text-danger' %}       {# Default color #}
+
+        {% if error_code == 404 %}
+            {% set icon_class = 'fa-map-signs' %}
+            {% set icon_color = 'text-warning' %}
+        {% elif error_code == 403 %}
+            {% set icon_class = 'fa-user-lock' %}
+            {% set icon_color = 'text-warning' %}
+        {% elif error_code == 401 %}
+            {% set icon_class = 'fa-key' %}
+            {% set icon_color = 'text-warning' %}
+         {% elif error_code == 413 %}
+            {% set icon_class = 'fa-file-upload' %}
+            {% set icon_color = 'text-info' %}
+        {% elif error_code >= 500 %}
+            {% set icon_class = 'fa-server' %}
+            {# Mantiene text-danger para 5xx #}
+        {% elif error_code >= 400 %}
+             {# Otros errores 4xx #}
+             {% set icon_color = 'text-info' %}
+        {% endif %}
+
+        <i class="fas {{ icon_class }} error-icon {{ icon_color }}"></i>
+
+        {# --- Título del Error --- #}
+        {# Espera 'error_code' (int) y 'error_name' (str) del contexto #}
+        <h1 class="display-4 mb-3">
+            Error {{ error_code | default('?') }} - {{ error_name | default('Error Desconocido') | e }}
+        </h1>
+
+        {# --- Mensaje Descriptivo --- #}
+        {# Espera 'error_message' (str) del contexto #}
+        <p class="lead text-muted mb-4">
+            {{ error_message | default('Ocurrió un problema inesperado al procesar tu solicitud.') | e }}
+        </p>
+
+        {# --- Acciones Sugeridas --- #}
+        <div class="mt-4">
+            {# Botón para ir al Dashboard (requiere endpoint 'main.dashboard') #}
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-home me-2"></i> Ir al Dashboard Principal
+            </a>
+
+            {# Botón para volver a la página anterior (usa JS) #}
+            <button onclick="window.history.back();" class="btn btn-outline-secondary btn-lg ms-2">
+                <i class="fas fa-arrow-left me-2"></i> Volver Atrás
+            </button>
+        </div>
+
+        {# --- Información Adicional (Opcional) --- #}
+        <div class="mt-5 text-muted small">
+            <p>Si el problema persiste o crees que se trata de un error en la aplicación, por favor contacta con el equipo de soporte.</p>
+            {# Podrías añadir un mailto o enlace a sistema de tickets #}
+            {# <a href="mailto:soporte.pricing@bbva.com">Contactar a Soporte</a> #}
+            {# Mostrar Request ID si se genera y pasa (útil para depuración) #}
+            {% if request_id %}
+                <p class="mt-2">ID de Referencia del Error: {{ request_id }}</p>
+            {% endif %}
+        </div>
+
+    </div> {# Fin col #}
+</div>{% endblock %}
+
+{% block page_scripts %}
+{{ super() }} {# Hereda scripts de layout.html si los hubiera #}
+<script>
+    // No se necesita JS específico para esta página más allá del botón 'Volver Atrás'
+    console.warn("Página de error cargada. Código: {{ error_code | default('N/A') }}");
+</script>
+{% endblock %}
